@@ -133,6 +133,109 @@ def test_zero_std_single_column():
     print("✓ test_zero_std_single_column passed")
 
 
+def test_invalid_method_raises():
+    try:
+        ZScoreStandardizer(method="unknown")
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "Unknown method" in str(e)
+    print("✓ test_invalid_method_raises passed")
+
+
+def test_minmax_basic():
+    data = np.array([[1, 10], [2, 20], [3, 30], [4, 40]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax")
+    result = standardizer.fit_transform(data)
+    assert result.shape == data.shape
+    np.testing.assert_allclose(result.min(axis=0), [0.0, 0.0], atol=1e-10)
+    np.testing.assert_allclose(result.max(axis=0), [1.0, 1.0], atol=1e-10)
+    print("✓ test_minmax_basic passed")
+
+
+def test_minmax_custom_range():
+    data = np.array([[1, 10], [2, 20], [3, 30]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax", feature_range=(-1, 1))
+    result = standardizer.fit_transform(data)
+    np.testing.assert_allclose(result.min(axis=0), [-1.0, -1.0], atol=1e-10)
+    np.testing.assert_allclose(result.max(axis=0), [1.0, 1.0], atol=1e-10)
+    print("✓ test_minmax_custom_range passed")
+
+
+def test_minmax_invalid_feature_range():
+    try:
+        ZScoreStandardizer(method="minmax", feature_range=(1, 0))
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "feature_range" in str(e)
+    print("✓ test_minmax_invalid_feature_range passed")
+
+
+def test_minmax_constant_column_raises():
+    data = np.array([[5, 1], [5, 2], [5, 3]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax")
+    try:
+        standardizer.fit_transform(data)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "zero range" in str(e)
+    print("✓ test_minmax_constant_column_raises passed")
+
+
+def test_minmax_inverse_transform():
+    data = np.array([[1, 10], [2, 20], [3, 30]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax")
+    transformed = standardizer.fit_transform(data)
+    recovered = standardizer.inverse_transform(transformed)
+    np.testing.assert_allclose(recovered, data, atol=1e-10)
+    print("✓ test_minmax_inverse_transform passed")
+
+
+def test_minmax_list_input():
+    data = [[10, 20], [30, 40], [50, 60]]
+    standardizer = ZScoreStandardizer(method="minmax")
+    result = standardizer.fit_transform(data)
+    assert result.shape == (3, 2)
+    np.testing.assert_allclose(result.min(axis=0), [0.0, 0.0], atol=1e-10)
+    np.testing.assert_allclose(result.max(axis=0), [1.0, 1.0], atol=1e-10)
+    print("✓ test_minmax_list_input passed")
+
+
+def test_minmax_1d_input():
+    data = np.array([1, 2, 3, 4, 5], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax")
+    result = standardizer.fit_transform(data)
+    assert result.shape == (5, 1)
+    np.testing.assert_allclose(result.min(axis=0), [0.0], atol=1e-10)
+    np.testing.assert_allclose(result.max(axis=0), [1.0], atol=1e-10)
+    print("✓ test_minmax_1d_input passed")
+
+
+def test_minmax_fit_then_transform():
+    train = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float64)
+    test = np.array([[4, 3]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax")
+    standardizer.fit(train)
+    result = standardizer.transform(test)
+    data_min = standardizer.mean_
+    data_range = standardizer.scale_
+    expected = (test - data_min) / data_range
+    np.testing.assert_allclose(result, expected, atol=1e-10)
+    print("✓ test_minmax_fit_then_transform passed")
+
+
+def test_minmax_get_params():
+    data = np.array([[1, 2], [3, 4], [5, 6]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(method="minmax")
+    standardizer.fit(data)
+    params = standardizer.get_params()
+    assert params["method"] == "minmax"
+    assert "data_min" in params
+    assert "data_range" in params
+    np.testing.assert_allclose(params["data_min"], data.min(axis=0), atol=1e-10)
+    np.testing.assert_allclose(params["data_range"], np.ptp(data, axis=0), atol=1e-10)
+    print("✓ test_minmax_get_params passed")
+
+
 if __name__ == "__main__":
     test_basic_standardization()
     test_list_input()
@@ -147,4 +250,14 @@ if __name__ == "__main__":
     test_zero_std_raises()
     test_zero_std_with_std_false()
     test_zero_std_single_column()
+    test_invalid_method_raises()
+    test_minmax_basic()
+    test_minmax_custom_range()
+    test_minmax_invalid_feature_range()
+    test_minmax_constant_column_raises()
+    test_minmax_inverse_transform()
+    test_minmax_list_input()
+    test_minmax_1d_input()
+    test_minmax_fit_then_transform()
+    test_minmax_get_params()
     print("\nAll tests passed!")
