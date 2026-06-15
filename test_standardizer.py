@@ -101,6 +101,38 @@ def test_without_std():
     print("✓ test_without_std passed")
 
 
+def test_zero_std_raises():
+    data = np.array([[5, 1], [5, 2], [5, 3]], dtype=np.float64)
+    standardizer = ZScoreStandardizer()
+    try:
+        standardizer.fit_transform(data)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "zero standard deviation" in str(e)
+        assert "0" in str(e)
+    print("✓ test_zero_std_raises passed")
+
+
+def test_zero_std_with_std_false():
+    data = np.array([[5, 1], [5, 2], [5, 3]], dtype=np.float64)
+    standardizer = ZScoreStandardizer(with_std=False)
+    result = standardizer.fit_transform(data)
+    np.testing.assert_allclose(result[:, 0], [0.0, 0.0, 0.0], atol=1e-10)
+    assert len(standardizer.zero_std_features_) == 0
+    print("✓ test_zero_std_with_std_false passed")
+
+
+def test_zero_std_single_column():
+    data = np.array([[3], [3], [3], [3]], dtype=np.float64)
+    standardizer = ZScoreStandardizer()
+    try:
+        standardizer.fit_transform(data)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "zero standard deviation" in str(e)
+    print("✓ test_zero_std_single_column passed")
+
+
 if __name__ == "__main__":
     test_basic_standardization()
     test_list_input()
@@ -112,4 +144,7 @@ if __name__ == "__main__":
     test_inf_rejection()
     test_without_mean()
     test_without_std()
+    test_zero_std_raises()
+    test_zero_std_with_std_false()
+    test_zero_std_single_column()
     print("\nAll tests passed!")

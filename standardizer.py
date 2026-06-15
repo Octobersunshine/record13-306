@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -14,12 +15,14 @@ class ZScoreStandardizer(BaseEstimator, TransformerMixin):
         )
         self.mean_ = None
         self.scale_ = None
+        self.zero_std_features_ = None
 
     def fit(self, X, y=None):
         X = self._validate_input(X)
         self._scaler.fit(X)
         self.mean_ = self._scaler.mean_
         self.scale_ = self._scaler.scale_
+        self._check_zero_std(X)
         return self
 
     def transform(self, X):
@@ -31,11 +34,26 @@ class ZScoreStandardizer(BaseEstimator, TransformerMixin):
         result = self._scaler.fit_transform(X)
         self.mean_ = self._scaler.mean_
         self.scale_ = self._scaler.scale_
+        self._check_zero_std(X)
         return result
 
     def inverse_transform(self, X):
         X = self._validate_input(X)
         return self._scaler.inverse_transform(X)
+
+    def _check_zero_std(self, X):
+        if not self.with_std:
+            self.zero_std_features_ = np.array([], dtype=int)
+            return
+        stds = np.std(X, axis=0, ddof=0)
+        zero_mask = stds == 0.0
+        self.zero_std_features_ = np.where(zero_mask)[0]
+        if len(self.zero_std_features_) > 0:
+            cols = self.zero_std_features_.tolist()
+            raise ValueError(
+                f"Cannot standardize feature(s) with zero standard deviation "
+                f"(constant column(s)): {cols}"
+            )
 
     def _validate_input(self, X):
         if isinstance(X, list):
